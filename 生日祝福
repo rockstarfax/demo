@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✨ 穿越星际遇见你</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 0. 全局设置 --- */
+        :root {
+            --font-cute: "ZCOOL KuaiLe", "Comic Sans MS", cursive, sans-serif;
+            --c-pink: #ff9a9e;
+            --c-blue: #a18cd1;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-cute);
+            background-color: #000;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        /* 3D 背景容器 */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: radial-gradient(circle at center, #1a0b2e 0%, #000000 100%);
+        }
+
+        /* 玻璃拟态通用样式 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* ==========================
+           1. 左上角音乐控制 (针对 Video 2)
+           ========================== */
+        #music-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 90000;
+            display: flex;
+            gap: 10px;
+            opacity: 0;
+            transition: opacity 1s;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 20px;
+            padding: 8px 15px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            font-family: var(--font-cute);
+            font-size: 1rem;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* ==========================
+           2. 音乐视频弹窗 (针对 Video 2)
+           ========================== */
+        #music-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 90001;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+
+        #music-modal.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .video-box-bgm {
+            width: 90%;
+            max-width: 800px;
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255, 154, 158, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .video-box-bgm video {
+            width: 100%;
+            display: block;
+        }
+
+        .close-video-btn {
+            margin-top: 20px;
+            padding: 10px 30px;
+            background: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: 0.3s;
+        }
+
+        .close-video-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        /* ==========================
+           3. 登录界面
+           ========================== */
+        #login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s, transform 1s;
+        }
+
+        .login-card {
+            padding: 40px;
+            text-align: center;
+            width: 85%;
+            max-width: 380px;
+            position: relative;
+            background: rgba(20, 20, 30, 0.6);
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translate3d(-1px, 0, 0);
+            }
+
+            20%,
+            80% {
+                transform: translate3d(2px, 0, 0);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translate3d(-4px, 0, 0);
+            }
+
+            40%,
+            60% {
+                transform: translate3d(4px, 0, 0);
+            }
+        }
+
+        .custom-input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .custom-input:focus {
+            border-color: var(--c-pink);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .login-btn {
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4);
+            color: #fff;
+            border: none;
+            padding: 12px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: transform 0.2s;
+            font-family: var(--font-cute);
+        }
+
+        .login-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* ==========================
+           4. 倒计时 & 问答
+           ========================== */
+        #countdown-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50000;
+            pointer-events: none;
+        }
+
+        #countdown-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 15vw;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 0 30px #ff9a9e;
+            font-family: 'Arial Black', sans-serif;
+            opacity: 0;
+            z-index: 50001;
+        }
+
+        .zoom-anim {
+            animation: numZoom 1s ease-out forwards;
+        }
+
+        @keyframes numZoom {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        #question-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 60000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.3);
+            transition: opacity 1s;
+        }
+
+        .btn-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+        }
+
+        .mood-btn {
+            padding: 15px 40px;
+            border-radius: 50px;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            font-family: var(--font-cute);
+            transition: 0.2s;
+        }
+
+        #btn-happy {
+            background: linear-gradient(135deg, #fce38a, #f38181);
+            color: #fff;
+            z-index: 60001;
+        }
+
+        #btn-unhappy {
+            background: #555;
+            color: #ccc;
+            position: absolute;
+        }
+
+        /* ==========================
+           5. 主世界
+           ========================== */
+        #main-world {
+            display: none;
+            opacity: 0;
+            transition: opacity 2s ease;
+            position: relative;
+            z-index: 70000;
+            background: transparent;
+        }
+
+        .section-hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: radial-gradient(circle, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.4) 100%);
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            margin: 0;
+            text-shadow: 0 0 20px #ff9a9e, 0 0 40px #a18cd1;
+            min-height: 1.2em;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #ddd;
+            margin-top: 20px;
+            opacity: 0;
+        }
+
+        /* 回忆墙 */
+        .section-memories {
+            padding: 100px 20px;
+            position: relative;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #fff;
+            margin-bottom: 50px;
+            text-shadow: 0 0 10px rgba(255, 154, 158, 0.8);
+        }
+
+        .gallery-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .polaroid {
+            background: #fff;
+            padding: 10px 10px 40px 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            width: 220px;
+            transform: rotate(-3deg);
+            transition: transform 0.3s;
+        }
+
+        .polaroid img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+        }
+
+        .polaroid:hover {
+            transform: scale(1.1) rotate(0deg) !important;
+            z-index: 20;
+        }
+
+        .polaroid:nth-child(even) {
+            transform: rotate(3deg);
+        }
+
+        /* 页面中原来的 Video 1 样式 (补全) */
+        .section-video {
+            padding: 100px 20px;
+            text-align: center;
+        }
+
+        .video-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 10px;
+            background: linear-gradient(45deg, #ff9a9e, #a18cd1);
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(161, 140, 209, 0.4);
+        }
+
+        .video-container {
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+        }
+
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 蛋糕部分 */
+        .section-cake {
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: linear-gradient(to top, #000 0%, transparent 100%);
+        }
+
+        .cake-container {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .cake-container:active {
+            transform: scale(0.9);
+        }
+
+        .cake-emoji {
+            font-size: 8rem;
+            filter: drop-shadow(0 0 50px rgba(255, 100, 150, 0.6));
+            animation: floatCake 3s ease-in-out infinite;
+        }
+
+        @keyframes floatCake {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .wish-pop {
+            position: absolute;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatAndFade 2.5s ease-out forwards;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8);
+            white-space: nowrap;
+            z-index: 99999;
+        }
+
+        @keyframes floatAndFade {
+            0% {
+                opacity: 0;
+                margin-top: 0;
+                transform: translateX(-50%) scale(0.5);
+            }
+
+            20% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1.2);
+            }
+
+            100% {
+                opacity: 0;
+                margin-top: -200px;
+                transform: translateX(-50%) scale(1);
+            }
+        }
+
+        .char-jump {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(20px) scale(0.8);
+            animation: jumpAnim 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes jumpAnim {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="music-controls">
+        <button id="music-toggle" class="control-btn">🎵 暂停</button>
+        <button id="music-detail" class="control-btn">ℹ️ 详情</button>
+    </div>
+
+    <div id="music-modal">
+        <div class="video-box-bgm">
+            <video id="bgm-video" src="video2.mp4" loop playsinline></video>
+        </div>
+        <button class="close-video-btn" onclick="toggleMusicModal(false)">关闭窗口 (音乐继续)</button>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="login-modal">
+        <div class="login-card glass-panel">
+            <h2 style="font-size: 2rem; margin-bottom: 20px; color:#fff;">🪐 领航员登录</h2>
+            <input type="text" id="username" class="custom-input" placeholder="输入你的名字 ">
+            <input type="password" id="password" class="custom-input" placeholder="输入密钥 (四位数)">
+            <button class="login-btn" id="login-btn">开启生日之旅 🚀</button>
+            <p id="feedback-msg" style="margin-top:10px; height:20px; color:#ff3860;"></p>
+        </div>
+    </div>
+
+    <div id="countdown-container">
+        <div id="countdown-overlay"></div>
+    </div>
+
+    <div id="question-modal">
+        <h1 style="color:#fff; font-size:3rem; margin-bottom:50px;">今天你开心吗？</h1>
+        <div class="btn-container">
+            <button id="btn-happy" class="mood-btn">超开心 😁</button>
+            <button id="btn-unhappy" class="mood-btn" style="left:60%;">不开心 😔</button>
+        </div>
+    </div>
+
+    <div id="main-world">
+        <section class="section-hero">
+            <h1 id="hero-title" class="hero-title">Happy Birthday!</h1>
+            <p class="hero-subtitle">✨ 欢迎来到你的专属宇宙 ✨</p>
+            <p class="hero-subtitle" style="font-size: 1rem;">↓ 下滑探索更多 ↓</p>
+        </section>
+
+        <section class="section-memories">
+            <div class="gallery-container">
+                <h2 class="section-title">📸 每一张照片，都是我们友情的见证</h2>
+                <div class="gallery">
+                    <div class="polaroid"><img src="photos/1.jpg"
+                            onerror="this.src='https://via.placeholder.com/300/ff9a9e/fff?text=Photo+1'"></div>
+                    <div class="polaroid"><img src="photos/2.jpg"
+                            onerror="this.src='https://via.placeholder.com/300/a18cd1/fff?text=Photo+2'"></div>
+                    <div class="polaroid"><img src="photos/3.jpg"
+                            onerror="this.src='https://via.placeholder.com/300/fad0c4/fff?text=Photo+3'"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-video">
+            <h2 class="section-title">🎬 每一颗划过的星，都是我对你新一岁的祝福</h2>
+            <div class="video-wrapper">
+                <div class="video-container">
+                    <video controls loop poster="https://via.placeholder.com/800x450/000/fff?text=Video+Cover">
+                        <source src="video.mp4" type="video/mp4">
+                        您的浏览器不支持视频标签。
+                    </video>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-cake">
+            <div class="cake-container" id="cake-btn">
+                <div class="cake-emoji">🎂</div>
+            </div>
+            <p style="margin-top: 30px; font-size: 1.2rem; color: #ff9a9e; text-shadow: 0 0 10px #000;">
+                👆 点击蛋糕，接收宇宙祝福！
+            </p>
+        </section>
+    </div>
+
+    <script>
+        const CONFIG = {
+            correctUsername: "小明",
+            correctPassword: "1111"
+        };
+
+        const wishes = [
+            "暴富 💰", "变美 ✨", "快乐 😆", "自由 🕊️", "被爱 ❤️",
+            "健康 🍎", "平安 🍀", "暴瘦 💃", "好运 🌟", "无忧 🍺",
+            "心想事成", "万事胜意", "永远18岁", "吃不胖"
+        ];
+
+        const colors = ['#ff9a9e', '#a18cd1', '#fad0c4', '#fbc2eb', '#8fd3f4', '#84fab0'];
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM 元素
+            const loginBtn = document.getElementById('login-btn');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const feedbackMsg = document.getElementById('feedback-msg');
+            const loginModal = document.getElementById('login-modal');
+            const loginCard = document.querySelector('.login-card');
+            const countdownOverlay = document.getElementById('countdown-overlay');
+            const questionModal = document.getElementById('question-modal');
+            const mainWorld = document.getElementById('main-world');
+            const cakeBtn = document.getElementById('cake-btn');
+
+            // 音乐控制元素 (Video 2)
+            const bgmVideo = document.getElementById('bgm-video');
+            const musicControls = document.getElementById('music-controls');
+            const musicToggleBtn = document.getElementById('music-toggle');
+            const musicDetailBtn = document.getElementById('music-detail');
+            const musicModal = document.getElementById('music-modal');
+
+            // --- Three.js 背景 ---
+            let isZooming = false;
+            let cameraZ = 120;
+            function initThreeBackground() {
+                const container = document.getElementById('canvas-container');
+                container.innerHTML = '';
+                const scene = new THREE.Scene();
+                scene.fog = new THREE.FogExp2(0x000000, 0.0005);
+                const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                container.appendChild(renderer.domElement);
+                camera.position.z = cameraZ; camera.position.y = 15; camera.lookAt(0, 0, 0);
+
+                const sphereGeo = new THREE.BufferGeometry();
+                const sphereCount = 20000;
+                const spherePos = new Float32Array(sphereCount * 3);
+                const sphereColors = new Float32Array(sphereCount * 3);
+                const colorObj = new THREE.Color();
+                for (let i = 0; i < sphereCount; i++) {
+                    const r = 24 * Math.cbrt(Math.random());
+                    const theta = Math.random() * 2 * Math.PI;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    spherePos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                    spherePos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                    spherePos[i * 3 + 2] = r * Math.cos(phi);
+                    colorObj.setHSL(0.1, 0.8, 0.4 + Math.random() * 0.2);
+                    sphereColors[i * 3] = colorObj.r; sphereColors[i * 3 + 1] = colorObj.g; sphereColors[i * 3 + 2] = colorObj.b;
+                }
+                sphereGeo.setAttribute('position', new THREE.BufferAttribute(spherePos, 3));
+                sphereGeo.setAttribute('color', new THREE.BufferAttribute(sphereColors, 3));
+                const coreMat = new THREE.PointsMaterial({ size: 0.4, vertexColors: true, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending });
+                const planet = new THREE.Points(sphereGeo, coreMat);
+                scene.add(planet);
+
+                const ringGeo = new THREE.BufferGeometry();
+                const ringCount = 35000;
+                const ringPos = new Float32Array(ringCount * 3);
+                const ringColors = new Float32Array(ringCount * 3);
+                const ringData = [];
+                const colorInner = new THREE.Color(0x8B5A2B); const colorOuter = new THREE.Color(0xFFF8E7); const tempColor = new THREE.Color();
+                for (let i = 0; i < ringCount; i++) {
+                    let r = 32 + Math.random() * 55;
+                    if (r > 52 && r < 56) { if (Math.random() > 0.3) r += 5; }
+                    const angle = Math.random() * 2 * Math.PI;
+                    const speed = 150 / Math.sqrt(r * r * r);
+                    const y = (Math.random() - 0.5) * 0.8;
+                    ringData.push({ r, angle, speed, y });
+                    ringPos[i * 3] = r * Math.cos(angle); ringPos[i * 3 + 1] = y; ringPos[i * 3 + 2] = r * Math.sin(angle);
+                    const normalizedRadius = (r - 32) / 55;
+                    tempColor.copy(colorInner).lerp(colorOuter, Math.pow(normalizedRadius, 1.5));
+                    ringColors[i * 3] = tempColor.r; ringColors[i * 3 + 1] = tempColor.g; ringColors[i * 3 + 2] = tempColor.b;
+                }
+                ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPos, 3));
+                ringGeo.setAttribute('color', new THREE.BufferAttribute(ringColors, 3));
+                const ringMat = new THREE.PointsMaterial({ size: 0.5, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+                const rings = new THREE.Points(ringGeo, ringMat);
+                const ringsGroup = new THREE.Group();
+                ringsGroup.add(rings);
+                ringsGroup.rotation.z = Math.PI / 8; ringsGroup.rotation.x = Math.PI / 6;
+                scene.add(ringsGroup);
+
+                const starsGeo = new THREE.BufferGeometry();
+                const starsCount = 3000;
+                const starsPos = new Float32Array(starsCount * 3);
+                for (let i = 0; i < starsCount; i++) {
+                    starsPos[i * 3] = (Math.random() - 0.5) * 1000; starsPos[i * 3 + 1] = (Math.random() - 0.5) * 1000; starsPos[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+                }
+                starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
+                const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.6, transparent: true, opacity: 0.6 });
+                const stars = new THREE.Points(starsGeo, starsMat);
+                scene.add(stars);
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    planet.rotation.y += 0.002;
+                    const positions = rings.geometry.attributes.position.array;
+                    const timeScale = isZooming ? 2.0 : 0.5;
+                    for (let i = 0; i < ringCount; i++) {
+                        const d = ringData[i]; d.angle += d.speed * timeScale;
+                        positions[i * 3] = d.r * Math.cos(d.angle); positions[i * 3 + 2] = d.r * Math.sin(d.angle);
+                    }
+                    rings.geometry.attributes.position.needsUpdate = true;
+                    if (isZooming) {
+                        if (cameraZ > 50) { cameraZ -= 0.6; camera.position.z = cameraZ; if (camera.position.y > 5) camera.position.y -= 0.08; }
+                    }
+                    renderer.render(scene, camera);
+                }
+                animate();
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            }
+            initThreeBackground();
+
+            // --- 登录逻辑 ---
+            function login() {
+                const u = usernameInput.value.trim();
+                const p = passwordInput.value.trim();
+                if (!u || !p) {
+                    feedbackMsg.textContent = '输入完整才能起飞哦~';
+                    shakeCard(); return;
+                }
+                if (u === CONFIG.correctUsername && p === CONFIG.correctPassword) {
+                    feedbackMsg.textContent = '验证通过！正在前往你的宇宙...';
+                    feedbackMsg.style.color = '#4CAF50';
+
+                    // 1. 登录成功，触发 Video 2 (BGM) 自动播放
+                    bgmVideo.volume = 0.5;
+                    bgmVideo.play().then(() => {
+                        console.log("Music Playing");
+                    }).catch(e => {
+                        console.log("Auto play prevented", e);
+                    });
+
+                    // 显示左上角控制栏
+                    musicControls.style.opacity = 1;
+
+                    setTimeout(() => {
+                        loginModal.style.opacity = 0;
+                        setTimeout(() => {
+                            loginModal.style.display = 'none';
+                            isZooming = true;
+                            startCountdown();
+                        }, 1000);
+                    }, 1500);
+                } else {
+                    feedbackMsg.textContent = '暗号不对，是不是本人呀？';
+                    shakeCard();
+                }
+            }
+            function shakeCard() { loginCard.classList.add('shake'); setTimeout(() => loginCard.classList.remove('shake'), 500); }
+            loginBtn.addEventListener('click', login);
+            passwordInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') login(); });
+
+            // --- 音乐控制逻辑 (Video 2) ---
+            musicToggleBtn.addEventListener('click', function () {
+                if (bgmVideo.paused) {
+                    bgmVideo.play();
+                    this.textContent = '🎵 暂停';
+                } else {
+                    bgmVideo.pause();
+                    this.textContent = '🔇 播放';
+                }
+            });
+
+            window.toggleMusicModal = function (show) {
+                if (show) {
+                    musicModal.classList.add('active');
+                } else {
+                    musicModal.classList.remove('active');
+                }
+            }
+
+            musicDetailBtn.addEventListener('click', () => toggleMusicModal(true));
+            musicModal.addEventListener('click', function (e) {
+                if (e.target === musicModal) {
+                    toggleMusicModal(false);
+                }
+            });
+
+            // --- 倒计时 ---
+            function startCountdown() {
+                document.getElementById('countdown-container').style.display = 'block';
+                function showNum(n) {
+                    countdownOverlay.innerText = n;
+                    countdownOverlay.classList.remove('zoom-anim');
+                    void countdownOverlay.offsetWidth;
+                    countdownOverlay.classList.add('zoom-anim');
+                }
+                setTimeout(() => showNum(3), 500);
+                setTimeout(() => showNum(2), 1500);
+                setTimeout(() => showNum(1), 2500);
+                setTimeout(() => {
+                    document.getElementById('countdown-container').style.display = 'none';
+                    initQuestionPhase();
+                }, 3500);
+            }
+
+            // --- 提问环节 ---
+            function initQuestionPhase() {
+                questionModal.style.display = 'flex';
+                const btnHappy = document.getElementById('btn-happy');
+                const btnUnhappy = document.getElementById('btn-unhappy');
+                btnUnhappy.addEventListener('mouseover', function () {
+                    const maxX = window.innerWidth - this.offsetWidth;
+                    const maxY = window.innerHeight - this.offsetHeight;
+                    this.style.position = 'fixed';
+                    this.style.left = Math.random() * maxX + 'px';
+                    this.style.top = Math.random() * maxY + 'px';
+                });
+                const enter = () => enterMainWorld();
+                btnUnhappy.addEventListener('click', enter);
+                btnHappy.addEventListener('click', enter);
+
+                let currentScale = 1;
+                const startTime = Date.now();
+                function growHappyBtn() {
+                    const elapsed = Date.now() - startTime;
+                    if (elapsed < 300000 && questionModal.style.display !== 'none') {
+                        currentScale = 1 + (elapsed / 300000) * 79;
+                        btnHappy.style.transform = `scale(${currentScale})`;
+                        requestAnimationFrame(growHappyBtn);
+                    }
+                }
+                growHappyBtn();
+            }
+
+            // --- 文字特效 ---
+            function typeWriterEffect(element) {
+                const text = element.innerText;
+                element.innerHTML = '';
+                element.style.opacity = 1;
+                [...text].forEach((char, index) => {
+                    const span = document.createElement('span');
+                    span.innerHTML = char === ' ' ? '&nbsp;' : char;
+                    span.className = 'char-jump';
+                    span.style.animationDelay = `${index * 0.1}s`;
+                    element.appendChild(span);
+                });
+            }
+
+            // --- 进入主世界 ---
+            function enterMainWorld() {
+                questionModal.style.opacity = 0;
+                setTimeout(() => {
+                    questionModal.style.display = 'none';
+                    mainWorld.style.display = 'block';
+                    setTimeout(() => {
+                        mainWorld.style.opacity = 1;
+                        document.body.style.overflow = 'auto';
+
+                        const name = document.getElementById('username').value || "小明";
+                        const titleEl = document.getElementById('hero-title');
+                        const subEls = document.querySelectorAll('.hero-subtitle');
+
+                        titleEl.innerText = `Happy Birthday, ${name}!`;
+                        typeWriterEffect(titleEl);
+
+                        setTimeout(() => typeWriterEffect(subEls[0]), 1000);
+                        setTimeout(() => typeWriterEffect(subEls[1]), 2000);
+
+                        confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+                    }, 50);
+                }, 1000);
+            }
+
+            // --- 蛋糕点击互动 ---
+            cakeBtn.addEventListener('click', function (e) {
+                confetti({
+                    particleCount: 100, spread: 70, origin: { y: 0.8 }, colors: colors, disableForReducedMotion: true
+                });
+                const count = Math.floor(Math.random() * 4) + 5;
+                for (let i = 0; i < count; i++) { setTimeout(createFloatingWish, i * 150); }
+            });
+
+            function createFloatingWish() {
+                const text = wishes[Math.floor(Math.random() * wishes.length)];
+                const el = document.createElement('div');
+                el.className = 'wish-pop';
+                el.innerText = text;
+
+                const cakeRect = cakeBtn.getBoundingClientRect();
+                const centerX = cakeRect.left + cakeRect.width / 2 + window.scrollX;
+                const centerY = cakeRect.top + window.scrollY;
+
+                const randomX = (Math.random() - 0.5) * 200;
+
+                el.style.left = (centerX + randomX) + 'px';
+                el.style.top = (centerY - 50) + 'px';
+                el.style.color = colors[Math.floor(Math.random() * colors.length)];
+                el.style.fontSize = (Math.random() * 0.8 + 1.2) + 'rem';
+                el.style.transform = "translateX(-50%)";
+
+                document.body.appendChild(el);
+                setTimeout(() => { el.remove(); }, 2500);
+            }
+        });
+    </script>
+</body>
+
+</html>
